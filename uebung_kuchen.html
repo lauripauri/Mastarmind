@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – Dekoriere den Kuchen</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+}
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px; z-index: 200;
+  background: #FCF5EC;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; }
+.nav-pill {
+  margin-left: auto; display: flex; align-items: center;
+  border: 1.5px solid #262626; border-radius: 100px; padding: 10px 26px;
+}
+.nav-pill a { font-size: 16px; color: #262626; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+.stage {
+  position: fixed; top: 88px; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center;
+  padding: 0 48px 60px 64px; gap: 48px;
+}
+
+/* LEFT */
+.left { flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.left h1 { font-family: 'Fraunces', serif; font-size: 40px; font-weight: 900; line-height: 1.0; margin-bottom: 8px; }
+.tool-row { display: flex; gap: 12px; }
+.grid-3x3 {
+  display: grid;
+  grid-template-columns: repeat(3, 88px);
+  grid-template-rows: repeat(3, 88px);
+  gap: 10px;
+}
+.candles-col { display: flex; flex-direction: column; gap: 10px; }
+.tile {
+  width: 88px; height: 88px;
+  border: 1.5px solid #26262628; border-radius: 12px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; background: #FCF5EC;
+  transition: border-color 0.15s, transform 0.1s;
+}
+.tile:hover { border-color: #262626; transform: scale(1.04); }
+.tile.active { border: 2.5px solid #262626; box-shadow: 0 0 0 3px rgba(38,38,38,0.12); }
+.tile img { width: 100%; height: 100%; object-fit: contain; padding: 6px; pointer-events: none; }
+.tile.candle img { width: auto; height: 80%; object-fit: contain; padding: 4px; }
+#fertig-btn {
+  font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700;
+  background: transparent; border: 1.5px solid #262626; border-radius: 100px;
+  padding: 12px 40px; cursor: pointer; color: #262626;
+  margin-top: 16px; transition: background 0.2s, color 0.2s;
+}
+#fertig-btn:hover { background: #262626; color: #FCF5EC; }
+
+/* CAKE */
+.cake-area { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+/*
+  Strategy: show the full cake PNG as a non-interactive background image.
+  On top, place a single <div id="zone"> that is sized and positioned
+  to cover ONLY the beige cake body (not the grey plate at bottom).
+  overflow:hidden on zone clips everything inside it.
+  The zone IS the click target.
+*/
+#cake-outer {
+  position: relative;
+  width: 430px;
+  /* height is set by JS after image loads */
+}
+#cake-bg {
+  display: block;
+  width: 100%;
+  pointer-events: none; /* image never intercepts clicks */
+  user-select: none;
+}
+#zone {
+  position: absolute;
+  /* These match the beige cake body in the PNG:
+     top ~3%, left ~3%, width ~94%, height ~72% of image */
+  top: 3%;
+  left: 3%;
+  width: 94%;
+  height: 72%;
+  border-radius: 14% 14% 2% 2% / 8% 8% 2% 2%;
+  overflow: hidden;
+  cursor: crosshair;
+  /* No z-index needed – it's the only interactive element */
+}
+
+/* Decos inside zone */
+.deco {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+.deco img { display: block; pointer-events: none; }
+
+#undo-btn {
+  position: fixed; bottom: 20px; left: 64px;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; color: #26262660;
+  background: none; border: none; cursor: pointer; text-decoration: underline;
+}
+#undo-btn:hover { color: #262626; }
+#skip-btn {
+  position: fixed; bottom: 20px; right: 48px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; color: #26262660;
+  background: none; border: none; cursor: pointer; text-decoration: underline;
+}
+#skip-btn:hover { color: #262626; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<div class="stage">
+  <div class="left">
+    <h1>Dekoriere<br>den Kuchen!</h1>
+    <div class="tool-row">
+      <div class="grid-3x3">
+        <div class="tile" onclick="pick(this,'sprinkle','images/Sterne.png')"><img src="images/Sterne.png"></div>
+        <div class="tile" onclick="pick(this,'sprinkle','images/Kreise.png')"><img src="images/Kreise.png"></div>
+        <div class="tile" onclick="pick(this,'sprinkle','images/Sprinkles.png')"><img src="images/Sprinkles.png"></div>
+        <div class="tile" style="background:#C5B5FF;padding:0" onclick="pick(this,'glasur',null,'#C5B5FF')"></div>
+        <div class="tile" style="background:#FB6C3A;padding:0" onclick="pick(this,'glasur',null,'#FB6C3A')"></div>
+        <div class="tile" style="background:#F0A8CC;padding:0" onclick="pick(this,'glasur',null,'#F0A8CC')"></div>
+        <div class="tile" onclick="pick(this,'patch','images/Patch1.png')"><img src="images/Patch1.png"></div>
+        <div class="tile" onclick="pick(this,'patch','images/Patch2.png')"><img src="images/Patch2.png"></div>
+        <div class="tile" onclick="pick(this,'patch','images/Patch3.png')"><img src="images/Patch3.png"></div>
+      </div>
+      <div class="candles-col">
+        <div class="tile candle" onclick="pick(this,'candle','images/Kerze1.png')"><img src="images/Kerze1.png"></div>
+        <div class="tile candle" onclick="pick(this,'candle','images/Kerze2.png')"><img src="images/Kerze2.png"></div>
+        <div class="tile candle" onclick="pick(this,'candle','images/Kerze3.png')"><img src="images/Kerze3.png"></div>
+      </div>
+    </div>
+    <button id="fertig-btn" onclick="goNext()">Fertig</button>
+  </div>
+
+  <div class="cake-area">
+    <div id="cake-outer">
+      <img id="cake-bg" src="images/Kuchen.png" alt="">
+      <div id="zone" onclick="onZoneClick(event)"></div>
+    </div>
+  </div>
+</div>
+
+<button id="undo-btn" onclick="undo()">↩ Rückgängig</button>
+<button id="skip-btn" onclick="goNext()">Übung überspringen</button>
+
+<script>
+let tool    = null;
+let history = [];
+
+function pick(el, kind, img, color) {
+  document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  tool = { kind, img: img || null, color: color || null };
+}
+
+function onZoneClick(e) {
+  if (!tool) return;
+  const zone = document.getElementById('zone');
+  const rect = zone.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  if (tool.kind === 'glasur') {
+    applyGlasur(tool.color);
+    return;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'deco';
+  wrap.style.left = x + 'px';
+  wrap.style.top  = y + 'px';
+
+  const im = document.createElement('img');
+  im.src = tool.img;
+
+  if (tool.kind === 'sprinkle') {
+    im.style.width = '34px';
+    wrap.style.transform = `translate(-50%,-50%) rotate(${Math.random()*360}deg)`;
+  } else if (tool.kind === 'patch') {
+    im.style.width = '36px';
+  } else if (tool.kind === 'candle') {
+    im.style.height = '80px';
+    im.style.width = 'auto';
+  }
+
+  wrap.appendChild(im);
+  zone.appendChild(wrap);
+  history.push(wrap);
+}
+
+function applyGlasur(color) {
+  const zone = document.getElementById('zone');
+  const W = zone.offsetWidth;
+  const H = zone.offsetHeight;
+
+  const old = zone.querySelector('.glasur-svg');
+  if (old) old.remove();
+
+  // Glasur covers top 50%, waves at bottom of that
+  const solidH = H * 0.50;
+  const waveH  = H * 0.08;
+  const waves  = 4;
+  const step   = W / waves;
+
+  let d = `M0,0 L${W},0 L${W},${solidH}`;
+  for (let i = waves; i >= 0; i--) {
+    const x   = i * step;
+    const y   = i % 2 === 0 ? solidH : solidH + waveH;
+    const cpx = x + step / 2;
+    const cpy = i % 2 === 0 ? solidH + waveH : solidH;
+    d += ` Q${cpx},${cpy} ${x},${y}`;
+  }
+  d += ' Z';
+
+  const ns  = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.classList.add('glasur-svg');
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:0;';
+
+  const path = document.createElementNS(ns, 'path');
+  path.setAttribute('d', d);
+  path.setAttribute('fill', color);
+  path.setAttribute('opacity', '0.88');
+  svg.appendChild(path);
+
+  zone.insertBefore(svg, zone.firstChild);
+  history.push(svg);
+}
+
+function undo() {
+  if (!history.length) return;
+  history.pop().remove();
+}
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='uebung_tapping.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>

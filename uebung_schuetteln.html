@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – Schüttel alles aus</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background-color: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px;
+  z-index: 200;
+  background-color: #FCF5EC;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; width: auto; }
+.nav-pill {
+  margin-left: auto;
+  display: flex; align-items: center;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 10px 26px;
+}
+.nav-pill a {
+  font-size: 16px; color: #262626;
+  text-decoration: none; cursor: pointer;
+  white-space: nowrap; transition: opacity 0.18s;
+}
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* ── LAYOUT ── */
+.stage {
+  position: fixed;
+  top: 88px; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* LEFT */
+.left {
+  flex: 0 0 460px;
+  padding: 0 0 80px 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 28px;
+  z-index: 10;
+}
+h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 60px; font-weight: 900;
+  line-height: 1.0; color: #262626;
+}
+.btn {
+  font-family: 'Fraunces', serif;
+  font-size: 20px; font-weight: 700;
+  background: transparent;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 14px 44px;
+  cursor: pointer; color: #262626;
+  transition: background 0.2s, color 0.2s;
+}
+.btn:hover { background: #262626; color: #FCF5EC; }
+#start-btn.hidden { display: none; }
+#fertig-btn { display: none; }
+#fertig-btn.visible { display: block; }
+
+/* RIGHT – illustration stage */
+.right {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+/*
+  Layout of 4 PNGs:
+  Kopf  → centered, upper portion
+  Körper → centered below head
+  Hand1 (left)  → bottom-left,  swings from bottom-right corner
+  Hand2 (right) → bottom-right, swings from bottom-left corner
+*/
+#il-body {
+  position: absolute;
+  bottom: 0;
+  left: 50%; transform: translateX(-50%);
+  width: 32%;
+  transform-origin: 50% 100%;
+  z-index: 2;
+}
+#il-head {
+  position: absolute;
+  bottom: 13%;
+  left: 46%; transform: translateX(-50%);
+  width: 46%;
+  transform-origin: 50% 100%;
+  z-index: 3;
+}
+#il-hand1 {
+  position: absolute;
+  bottom: 22%;
+  left: 6%;
+  width: 30%;
+  transform-origin: 95% 50%;
+  z-index: 4;
+}
+#il-hand2 {
+  position: absolute;
+  bottom: 22%;
+  right: 6%;
+  width: 30%;
+  transform-origin: 5% 50%;
+  z-index: 4;
+}
+
+/* ── ANIMATIONS ── */
+
+@keyframes shakeLeft {
+  0%   { transform: rotate(0deg)   translateY(0px); }
+  8%   { transform: rotate(-9deg)  translateY(-22px); }
+  20%  { transform: rotate(5deg)   translateY(-8px); }
+  32%  { transform: rotate(-12deg) translateY(-26px); }
+  44%  { transform: rotate(4deg)   translateY(-6px); }
+  56%  { transform: rotate(-8deg)  translateY(-18px); }
+  68%  { transform: rotate(6deg)   translateY(-4px); }
+  78%  { transform: rotate(-10deg) translateY(-22px); }
+  90%  { transform: rotate(3deg)   translateY(-10px); }
+  100% { transform: rotate(0deg)   translateY(0px); }
+}
+
+@keyframes shakeRight {
+  0%   { transform: rotate(0deg)  translateY(0px); }
+  10%  { transform: rotate(8deg)  translateY(-18px); }
+  22%  { transform: rotate(-5deg) translateY(-6px); }
+  35%  { transform: rotate(11deg) translateY(-24px); }
+  46%  { transform: rotate(-4deg) translateY(-8px); }
+  58%  { transform: rotate(9deg)  translateY(-20px); }
+  70%  { transform: rotate(-6deg) translateY(-4px); }
+  80%  { transform: rotate(10deg) translateY(-23px); }
+  92%  { transform: rotate(-3deg) translateY(-12px); }
+  100% { transform: rotate(0deg)  translateY(0px); }
+}
+
+/* Body: very subtle sway – just enough to feel alive */
+@keyframes swayBody {
+  0%   { transform: translateX(-50%) rotate(0deg) translateY(0px); }
+  18%  { transform: translateX(-50%) rotate(-1.2deg) translateY(-3px); }
+  36%  { transform: translateX(-50%) rotate(0.8deg)  translateY(-1px); }
+  54%  { transform: translateX(-50%) rotate(-1deg)   translateY(-4px); }
+  72%  { transform: translateX(-50%) rotate(1.3deg)  translateY(-2px); }
+  88%  { transform: translateX(-50%) rotate(-0.8deg) translateY(-1px); }
+  100% { transform: translateX(-50%) rotate(0deg) translateY(0px); }
+}
+
+/* Head: slightly more movement than body, different phase */
+@keyframes wobbleHead {
+  0%   { transform: translateX(-50%) rotate(0deg); }
+  14%  { transform: translateX(-50%) rotate(-3deg); }
+  28%  { transform: translateX(-50%) rotate(2.5deg); }
+  42%  { transform: translateX(-50%) rotate(-2.2deg); }
+  57%  { transform: translateX(-50%) rotate(3.2deg); }
+  71%  { transform: translateX(-50%) rotate(-2deg); }
+  85%  { transform: translateX(-50%) rotate(1.8deg); }
+  100% { transform: translateX(-50%) rotate(0deg); }
+}
+
+.shaking #il-hand1 {
+  animation: shakeLeft 0.88s ease-in-out infinite;
+}
+.shaking #il-hand2 {
+  animation: shakeRight 0.82s ease-in-out infinite;
+  animation-delay: -0.3s;
+}
+.shaking #il-body {
+  animation: swayBody 1.05s ease-in-out infinite;
+  animation-delay: -0.15s;
+}
+.shaking #il-head {
+  animation: wobbleHead 1.2s ease-in-out infinite;
+  animation-delay: -0.4s;
+}
+
+/* ── PROGRESS BAR ── */
+#progress-bar {
+  position: fixed;
+  bottom: 32px; left: 72px; right: 72px;
+  height: 4px;
+  background: #26262618;
+  border-radius: 100px;
+  z-index: 100;
+}
+#progress-fill {
+  height: 100%;
+  background: #262626;
+  border-radius: 100px;
+  width: 0%;
+}
+
+/* ── SKIP ── */
+#skip-btn {
+  position: fixed;
+  bottom: 20px; right: 48px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; color: #26262660;
+  background: none; border: none;
+  cursor: pointer; text-decoration: underline;
+  z-index: 100; transition: color 0.2s;
+}
+#skip-btn:hover { color: #262626; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<div class="stage">
+  <div class="left">
+    <h1 id="headline">Schüttel alles aus!</h1>
+    <button class="btn" id="start-btn" onclick="startExercise()">Start</button>
+    <button class="btn" id="fertig-btn" onclick="finish()">Fertig</button>
+  </div>
+
+  <div class="right" id="illus-wrap">
+    <!-- Order matters for z-index stacking -->
+    <img id="il-hand1" src="images/hand1.png" alt="">
+    <img id="il-hand2" src="images/hand2.png" alt="">
+    <img id="il-body"  src="images/Körper.png" alt="">
+    <img id="il-head"  src="images/kopf.png" alt="">
+  </div>
+</div>
+
+<div id="progress-bar">
+  <div id="progress-fill"></div>
+</div>
+
+<button id="skip-btn" onclick="goNext()">Übung überspringen</button>
+
+<script>
+const DURATION = 20000;
+let timer = null;
+
+function startExercise() {
+  document.getElementById('start-btn').classList.add('hidden');
+  document.getElementById('fertig-btn').classList.add('visible');
+  document.getElementById('illus-wrap').classList.add('shaking');
+
+  const fill = document.getElementById('progress-fill');
+  fill.style.transition = 'none';
+  fill.style.width = '0%';
+  void fill.offsetWidth;
+  fill.style.transition = `width ${DURATION}ms linear`;
+  fill.style.width = '100%';
+
+  timer = setTimeout(finish, DURATION);
+}
+
+function finish() {
+  if (timer) { clearTimeout(timer); timer = null; }
+
+  document.getElementById('illus-wrap').classList.remove('shaking');
+
+  const fill = document.getElementById('progress-fill');
+  fill.style.transition = 'width 0.3s ease';
+  fill.style.width = '100%';
+
+  document.getElementById('headline').textContent = 'Gut gemacht!';
+  document.getElementById('skip-btn').style.display = 'none';
+
+  const btn = document.getElementById('fertig-btn');
+  btn.textContent = 'Nächste Übung';
+  btn.classList.add('visible');
+  btn.onclick = () => goNext();
+}
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='uebung_kuchen.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>

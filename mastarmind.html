@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─── RESET ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background-color: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── PAGES ─── */
+.page {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.38s ease;
+  background-color: #FCF5EC;
+}
+.page.active { opacity: 1; pointer-events: all; }
+
+/* ─── NAV ─── */
+nav {
+  position: absolute; top: 28px; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 0 48px; z-index: 100;
+}
+.logo-wrap { cursor: pointer; display: flex; align-items: center; }
+.nav-pill {
+  margin-left: auto;
+  display: flex; align-items: center;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 10px 26px;
+}
+.nav-pill a {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 400;
+  color: #262626; text-decoration: none;
+  cursor: pointer; white-space: nowrap;
+  transition: opacity 0.18s;
+}
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* ═══════════════════════════════
+   PAGE 1
+═══════════════════════════════ */
+#page1 .hero {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 110px 140px 60px;
+  gap: 26px; z-index: 10;
+}
+#page1 h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 60px; font-weight: 900;
+  line-height: 1.08;
+  color: #262626; max-width: 800px;
+}
+.word {
+  display: inline-block;
+  opacity: 0; transform: translateX(-20px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.word.show { opacity: 1; transform: translateX(0); }
+
+#page1 p {
+  font-size: 19px;
+  line-height: 1.2;
+  max-width: 600px;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+#page1 p.show { opacity: 1; transform: translateY(0); }
+
+.btn-cta {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; font-weight: 700;
+  background-color: #CC6DAA !important;
+  color: #262626; border: none;
+  border-radius: 100px;
+  padding: 15px 46px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.10);
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  position: relative; top: 0;
+}
+.btn-cta.show { opacity: 1; transform: translateY(0); }
+.btn-cta:hover {
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.15);
+  top: 2px; filter: brightness(0.95);
+}
+.btn-cta:active { box-shadow: inset 0 5px 14px rgba(0,0,0,0.22); top: 3px; }
+
+#shapes-canvas {
+  position: absolute; inset: 0;
+  pointer-events: all; z-index: 1; overflow: hidden;
+}
+
+/* ═══════════════════════════════
+   PAGE 2
+═══════════════════════════════ */
+#page2 .hero {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 32px;
+  overflow: hidden;
+}
+#page2 h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 52px; font-weight: 900;
+  opacity: 0; transform: translateX(-22px);
+  transition: opacity 0.42s ease, transform 0.42s ease;
+  position: relative; z-index: 2;
+}
+#page2 h1.show { opacity: 1; transform: translateX(0); }
+
+.cards-row {
+  display: flex; gap: 26px;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: visible;
+  /* shift cards so ~20% hangs below screen */
+  margin-bottom: -200px;
+}
+.card-wrap {
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(120px);
+  transition: transform 0.5s cubic-bezier(0.22,1,0.36,1),
+              opacity 0.45s ease, filter 0.18s;
+  position: relative; z-index: 1;
+  user-select: none;
+  width: 312px;
+  flex-shrink: 0;
+  overflow: visible;
+  filter: drop-shadow(0 12px 28px rgba(0,0,0,0.12));
+}
+.card-wrap svg { display: block; width: 100%; height: auto; overflow: visible; }
+.card-wrap.show { opacity: 1; transform: translateY(0) rotate(var(--r, 0deg)); }
+.card-wrap:hover {
+  transform: translateY(-14px) scale(1.06) rotate(var(--r, 0deg)) !important;
+  filter: drop-shadow(0 20px 32px rgba(0,0,0,0.13));
+  z-index: 10;
+}
+.card-wrap.exit {
+  transform: translateY(140px) rotate(var(--r, 0deg)) !important;
+  opacity: 0 !important;
+  transition: transform 0.3s cubic-bezier(0.55,0,1,0.45),
+              opacity 0.26s ease !important;
+}
+.card-purple { --r: -6deg; }
+.card-green  { --r: 0deg; margin-top: -20px; }
+.card-pink   { --r: 6deg; }
+
+/* ═══════════════════════════════
+   PAGE 3
+═══════════════════════════════ */
+#page3 .content { position: absolute; inset: 0; overflow: hidden; }
+
+.hand-scene {
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 65vw; max-width: 900px;
+  transform: translateX(-108%);
+  transition: transform 0.62s cubic-bezier(0.22,1,0.36,1);
+  z-index: 5;
+}
+.hand-scene.show { transform: translateX(0); }
+.hand-img { display: block; width: 100%; height: auto; }
+
+/* Category bubbles */
+.cat {
+  position: absolute;
+  cursor: pointer;
+  z-index: 20; user-select: none;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+.cat img { display: block; width: 100%; height: auto; }
+
+/* Hover: float up and bounce back */
+.cat:hover {
+  transform: translateY(-18px) !important;
+}
+
+/* Click: jump up then fall out */
+.cat.fly {
+  animation: bubbleFly 0.6s cubic-bezier(0.55,0,1,0.45) forwards;
+  pointer-events: none;
+}
+@keyframes bubbleFly {
+  0%   { opacity:1; transform: translateY(0) scale(1); }
+  30%  { opacity:1; transform: translateY(-80px) rotate(-8deg) scale(1.1); }
+  100% { opacity:0; transform: translateY(300px) rotate(15deg) scale(0.8); }
+}
+
+/* ─── PLACEHOLDER ─── */
+#ph {
+  position: fixed; inset: 0; z-index: 300;
+  background-color: #FCF5EC;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; opacity: 0; pointer-events: none;
+  transition: opacity 0.35s;
+}
+#ph.show { opacity:1; pointer-events:all; }
+#ph h2 { font-family:'Fraunces',serif; font-size:44px; font-weight:900; }
+#ph p  { font-size:18px; opacity:0.5; }
+#ph button {
+  font-family:'Fraunces',serif; font-size:18px;
+  background-color:#987EFF; color:#262626;
+  border:none; border-radius:100px;
+  padding:13px 34px; cursor:pointer; margin-top:8px;
+}
+
+/* PAGE 4 */
+#page4 .p4-content {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  padding: 100px 72px 60px; gap: 80px;
+}
+#page4 .p4-left { flex: 0 0 500px; display: flex; flex-direction: column; gap: 22px; }
+#page4 h1 { font-family:'Fraunces',serif; font-size:52px; font-weight:900; line-height:1.0; }
+#page4 p { font-size:17px; line-height:1.6; max-width:460px; }
+#page4 .tags { display:flex; flex-wrap:wrap; gap:10px; margin-top:4px; }
+#page4 .tag { font-family:'Fraunces',serif; font-size:15px; font-weight:700; padding:7px 18px; border-radius:100px; }
+#page4 .btn-back { font-family:'Fraunces',serif; font-size:20px; font-weight:700; background:transparent; border:1.5px solid #262626; border-radius:100px; padding:14px 44px; cursor:pointer; color:#262626; align-self:flex-start; margin-top:4px; transition:background 0.2s,color 0.2s; }
+#page4 .btn-back:hover { background:#262626; color:#FCF5EC; }
+#page4 .p4-right { flex:1; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:center; }
+.xcard { width:190px; border:1.5px solid #26262620; border-radius:18px; padding:18px; display:flex; flex-direction:column; gap:10px; background:#FCF5EC; }
+.xcard .xi { font-size:30px; }
+.xcard .xt { font-family:'Fraunces',serif; font-size:15px; font-weight:700; }
+.xcard .xd { font-size:12px; line-height:1.5; color:#26262680; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════
+     LOGO (reused via template literal)
+     ══════════════════════════════════ -->
+<template id="tpl-logo">
+  <img src="images/logo.png" alt="Mastarmind" style="height:44px; width:auto;">
+</template>
+
+<!-- ══════════ PAGE 1 ══════════ -->
+<div class="page active" id="page1">
+  <nav>
+    <div class="logo-wrap" onclick="goTo(1)" id="logo1"></div>
+    <div class="nav-pill">
+      <a onclick="goTo(1)">Start</a><span class="nav-sep">|</span>
+      <a onclick="goTo('exercise')">Zufällige Übungen</a><span class="nav-sep">|</span>
+      <a onclick="goTo(3)">Kategorien</a><span class="nav-sep">|</span>
+      <a onclick="goTo(4)">Was ist das?</a>
+    </div>
+  </nav>
+  <div id="shapes-canvas"></div>
+  <div class="hero">
+    <h1 id="h1"></h1>
+    <p id="p1">Wenn unser Nervensystem dauerhaft unter Strom steht, bleibt der Körper im Alarmmodus. Wir fühlen uns ausgelaugt, innerlich unruhig und verlieren den Zugang zum Moment. Genau hier setzen einfache Übungen an und helfen dem Nervensystem dabei, sich zu regulieren und wieder ein Gefühl von Sicherheit entstehen zu lassen.</p>
+    <button class="btn-cta" id="b1" onclick="goTo(2)">Okay, hilf mir!</button>
+  </div>
+</div>
+
+<!-- ══════════ PAGE 2 ══════════ -->
+<div class="page" id="page2">
+  <nav>
+    <div class="logo-wrap" onclick="goTo(1)" id="logo2"></div>
+  </nav>
+  <div class="hero">
+    <h1 id="h2">Was brauchst du gerade?</h1>
+    <div class="cards-row">
+      <div class="card-wrap card-purple" id="c1" onclick="cardClick(this,'exercise')">
+        <svg viewBox="0 0 400 720" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+          <rect width="400" height="720" rx="36" fill="#987EFF"/>
+          <text font-family="Fraunces, serif" font-weight="700" font-size="38" fill="#262626">
+            <tspan x="36" y="130">Zeig mir zufällige</tspan>
+            <tspan x="36" dy="50">Übungen für mein</tspan>
+            <tspan x="36" dy="50">Nervensystem!</tspan>
+          </text>
+        </svg>
+      </div>
+      <div class="card-wrap card-green" id="c2" onclick="cardClick(this,3)">
+        <svg viewBox="0 0 400 720" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+          <rect width="400" height="720" rx="36" fill="#C5E073"/>
+          <text font-family="Fraunces, serif" font-weight="700" font-size="38" fill="#262626">
+            <tspan x="36" y="130">Zeig mir Übungen</tspan>
+            <tspan x="36" dy="50">nach Kategorien!</tspan>
+          </text>
+        </svg>
+      </div>
+      <div class="card-wrap card-pink" id="c3" onclick="cardClick(this,4)">
+        <svg viewBox="0 0 400 720" fill="none" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
+          <rect width="400" height="720" rx="36" fill="#FEA3DE"/>
+          <text font-family="Fraunces, serif" font-weight="700" font-size="38" fill="#262626">
+            <tspan x="36" y="130">Erklär mir,</tspan>
+            <tspan x="36" dy="50">was genau</tspan>
+            <tspan x="36" dy="50">das hier ist!</tspan>
+          </text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE 3 ══════════ -->
+<div class="page" id="page3">
+  <nav>
+    <div class="logo-wrap" onclick="goTo(1)" id="logo3"></div>
+    <div class="nav-pill">
+      <a onclick="goTo(1)">Start</a><span class="nav-sep">|</span>
+      <a onclick="goTo('exercise')">Zufällige Übungen</a><span class="nav-sep">|</span>
+      <a onclick="goTo(3)">Kategorien</a><span class="nav-sep">|</span>
+      <a onclick="goTo(4)">Was ist das?</a>
+    </div>
+  </nav>
+  <div class="content">
+    <div class="hand-scene" id="handScene">
+      <img class="hand-img" src="images/hand.png" alt="Hand">
+      <!--
+        Positionen direkt aus Figma umgerechnet.
+        Zum Anpassen: left/top/width in % ändern.
+      -->
+      <div class="cat" id="cat-beruhig" onclick="catClick(this,'beruhig')"
+           style="left:39.1%; top:-7.6%; width:23.5%;">
+        <img src="images/beruhig.png" alt="Beruhig mich!">
+      </div>
+      <div class="cat" id="cat-mich" onclick="catClick(this,'mich')"
+           style="left:62.8%; top:6.8%; width:9.8%;">
+        <img src="images/mich.png" alt="Mich spüren!">
+      </div>
+      <div class="cat" id="cat-raus" onclick="catClick(this,'raus')"
+           style="left:77.7%; top:19.7%; width:14.3%;">
+        <img src="images/raus.png" alt="Raus damit!">
+      </div>
+      <div class="cat" id="cat-lass" onclick="catClick(this,'lass')"
+           style="left:84.0%; top:42.8%; width:21.4%;">
+        <img src="images/lass.png" alt="Lass mich spielen!">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Placeholder -->
+<div id="ph">
+  <h2>🌿 Übungen kommen bald!</h2>
+  <p>Diese Kategorie wird gerade gebaut.</p>
+  <button onclick="goTo(3)">← Zurück zu Kategorien</button>
+</div>
+
+<script>
+// ── Inject logo everywhere ──
+const logoHTML = document.getElementById('tpl-logo').innerHTML;
+['logo1','logo2','logo3','logo4'].forEach(id => { const el=document.getElementById(id); if(el) el.innerHTML = logoHTML; });
+
+// ── Router ──
+let cur = 1, p1done = false, shapesGo = false;
+function goTo(t) {
+  
+  if (t === cur) return;
+  cur = t;
+  document.getElementById('ph').classList.remove('show');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+
+  if (t === 'exercise') {
+    // Zufällige Übungen: starts with Grounding
+    setTimeout(() => { location.href = 'uebung_grounding.html?cat=random&step=0'; }, 340);
+    return;
+  }
+
+  if (t === 1) { document.getElementById('page1').classList.add('active'); if (!shapesGo) startShapes(); }
+  else if (t === 2) { document.getElementById('page2').classList.add('active'); animP2(); }
+  else if (t === 3) { document.getElementById('page3').classList.add('active'); animP3(); }
+  else if (t === 4) { document.getElementById('page4').classList.add('active'); }
+}
+
+// ── Page 1: headline animation ──
+const WORDS = ['Hi,','lass','uns','dein','Nervensystem','beruhigen.'];
+function animP1() {
+  if (p1done) return; p1done = true;
+  const h = document.getElementById('h1');
+  h.innerHTML = WORDS.map(w => `<span class="word">${w}</span>`).join(' ');
+  h.querySelectorAll('.word').forEach((w,i) => setTimeout(() => w.classList.add('show'), 100 + i*80));
+  const t = 100 + (WORDS.length-1)*80 + 320;
+  setTimeout(() => {
+    document.getElementById('p1').classList.add('show');
+    setTimeout(() => document.getElementById('b1').classList.add('show'), 260);
+  }, t);
+  startShapes();
+}
+
+// ── Floating shapes ──
+const SH = [
+  { svg: `<svg width="72" height="70" viewBox="0 0 95 92" fill="none"><path d="M41.5978 4.16011C43.3848 -1.38672 51.2327 -1.38673 53.0197 4.16011L59.1025 23.0413C59.9013 25.5207 62.2086 27.2014 64.8135 27.2014H84.6059C90.4059 27.2014 92.8307 34.6131 88.1523 38.0412L72.0523 49.8385C69.9672 51.3663 69.095 54.0578 69.8877 56.5182L76.0165 75.5422C77.8003 81.079 71.4515 85.6601 66.7593 82.2218L50.8551 70.568C48.7439 69.021 45.8735 69.021 43.7624 70.568L27.8582 82.2218C23.1659 85.6601 16.8171 81.079 18.6009 75.5422L24.7298 56.5182C25.5224 54.0578 24.6502 51.3664 22.5652 49.8385L6.46515 38.0412C1.78673 34.6131 4.21152 27.2014 10.0115 27.2014H29.804C32.4088 27.2014 34.7161 25.5207 35.5149 23.0413L41.5978 4.16011Z" fill="#987EFF"/></svg>`, s: 72 },
+  { svg: `<svg width="70" height="70" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" fill="#C5E073"/></svg>`, s: 70 },
+  { svg: `<svg width="68" height="61" viewBox="0 0 75 67" fill="none"><path d="M30.0956 4C33.1748-1.33334 40.8728-1.33333 43.952 4L72.9639 54.25C76.0431 59.5833 72.1941 66.25 66.0357 66.25H8.01195C1.85355 66.25-1.99545 59.5833 1.08375 54.25L30.0956 4Z" fill="#FB6C3A"/></svg>`, s: 68 },
+  { svg: `<svg width="60" height="60" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" fill="#F0A8CC"/></svg>`, s: 60 },
+  { svg: `<svg width="55" height="54" viewBox="0 0 95 92" fill="none"><path d="M41.5978 4.16011C43.3848 -1.38672 51.2327 -1.38673 53.0197 4.16011L59.1025 23.0413C59.9013 25.5207 62.2086 27.2014 64.8135 27.2014H84.6059C90.4059 27.2014 92.8307 34.6131 88.1523 38.0412L72.0523 49.8385C69.9672 51.3663 69.095 54.0578 69.8877 56.5182L76.0165 75.5422C77.8003 81.079 71.4515 85.6601 66.7593 82.2218L50.8551 70.568C48.7439 69.021 45.8735 69.021 43.7624 70.568L27.8582 82.2218C23.1659 85.6601 16.8171 81.079 18.6009 75.5422L24.7298 56.5182C25.5224 54.0578 24.6502 51.3664 22.5652 49.8385L6.46515 38.0412C1.78673 34.6131 4.21152 27.2014 10.0115 27.2014H29.804C32.4088 27.2014 34.7161 25.5207 35.5149 23.0413L41.5978 4.16011Z" fill="#FEA3DE"/></svg>`, s: 55 },
+  { svg: `<svg width="52" height="47" viewBox="0 0 75 67" fill="none"><path d="M30.0956 4C33.1748-1.33334 40.8728-1.33333 43.952 4L72.9639 54.25C76.0431 59.5833 72.1941 66.25 66.0357 66.25H8.01195C1.85355 66.25-1.99545 59.5833 1.08375 54.25L30.0956 4Z" fill="#A2BF47"/></svg>`, s: 52 },
+  { svg: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="36" fill="#C5B5FF"/></svg>`, s: 80 },
+];
+// lots of copies for more shapes
+const SHAPES = [...SH, ...SH, ...SH];
+
+const SAFE = [[0,0,9999,118],[180,110,830,590]];
+function blocked(x,y,s) { return SAFE.some(([zx,zy,zw,zh])=>x+s>zx&&x<zx+zw&&y+s>zy&&y<zy+zh); }
+function randPos(s) { let x,y,t=0; do { x=Math.random()*(innerWidth-s); y=Math.random()*(innerHeight-s); t++; } while(blocked(x,y,s)&&t<40); return{x,y}; }
+
+let objs = [];
+function startShapes() {
+  if (shapesGo) return; shapesGo = true;
+  const cv = document.getElementById('shapes-canvas'); cv.innerHTML = '';
+  objs = SHAPES.map(d => {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute;cursor:pointer;';
+    el.innerHTML = d.svg;
+    const pos = randPos(d.s), a = Math.random()*Math.PI*2, spd = 0.26+Math.random()*0.32;
+    cv.appendChild(el);
+    const obj = { el, s: d.s, x: pos.x, y: pos.y, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd, ix: 0, iy: 0 };
+    el.addEventListener('click', e => {
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width/2;
+      const cy = e.clientY - rect.top - rect.height/2;
+      const d2 = Math.sqrt(cx*cx+cy*cy)||1;
+      obj.ix += (cx/d2)*6; obj.iy += (cy/d2)*6;
+    });
+    // Click: impulse away from click
+    el.addEventListener('click', e => {
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width/2;
+      const cy = e.clientY - rect.top  - rect.height/2;
+      const d  = Math.sqrt(cx*cx+cy*cy)||1;
+      obj.ix += (cx/d)*5; obj.iy += (cy/d)*5;
+      obj.vx += (cx/d)*0.2; obj.vy += (cy/d)*0.2;
+    });
+    return obj;
+  });
+  loop();
+}
+function loop() {
+  const W = innerWidth, H = innerHeight;
+  objs.forEach((o, i) => {
+    o.ix *= 0.92; o.iy *= 0.92;
+    o.x += o.vx + o.ix; o.y += o.vy + o.iy;
+    if (o.x < 0) { o.x=0; o.vx=Math.abs(o.vx); }
+    if (o.x+o.s > W) { o.x=W-o.s; o.vx=-Math.abs(o.vx); }
+    if (o.y < 0) { o.y=0; o.vy=Math.abs(o.vy); }
+    if (o.y+o.s > H) { o.y=H-o.s; o.vy=-Math.abs(o.vy); }
+    SAFE.forEach(([zx,zy,zw,zh]) => {
+      const cx=o.x+o.s/2, cy=o.y+o.s/2, r=o.s/2;
+      if (cx+r>zx&&cx-r<zx+zw&&cy+r>zy&&cy-r<zy+zh) {
+        const oL=(cx+r)-zx,oR=(zx+zw)-(cx-r),oT=(cy+r)-zy,oB=(zy+zh)-(cy-r);
+        const m=Math.min(oL,oR,oT,oB);
+        if(m===oL||m===oR){o.vx*=-1;o.x+=o.vx*2;}else{o.vy*=-1;o.y+=o.vy*2;}
+      }
+    });
+    for (let j=i+1; j<objs.length; j++) {
+      const b=objs[j], dx=(o.x+o.s/2)-(b.x+b.s/2), dy=(o.y+o.s/2)-(b.y+b.s/2);
+      const d=Math.sqrt(dx*dx+dy*dy), mn=(o.s+b.s)/2;
+      if(d<mn&&d>0) {
+        const nx=dx/d,ny=dy/d,rv=(o.vx-b.vx)*nx+(o.vy-b.vy)*ny;
+        if(rv<0){o.vx-=rv*nx;o.vy-=rv*ny;b.vx+=rv*nx;b.vy+=rv*ny;}
+        const ov=(mn-d)/2; o.x+=nx*ov;o.y+=ny*ov;b.x-=nx*ov;b.y-=ny*ov;
+      }
+    }
+    o.el.style.left = o.x+'px'; o.el.style.top = o.y+'px';
+  });
+  requestAnimationFrame(loop);
+}
+
+// ── Page 2 ──
+function animP2() {
+  const h = document.getElementById('h2');
+  ['c1','c2','c3'].forEach(id => { const el=document.getElementById(id); el.classList.remove('show','exit'); void el.offsetWidth; });
+  h.classList.remove('show'); void h.offsetWidth;
+  setTimeout(() => h.classList.add('show'), 60);
+  [300, 460, 610].forEach((d,i) => setTimeout(() => document.getElementById(['c1','c2','c3'][i]).classList.add('show'), d));
+}
+function cardClick(el, t) {
+  ['c1','c2','c3'].forEach(id => document.getElementById(id).classList.add('exit'));
+  setTimeout(() => goTo(t), 340);
+}
+
+// ── Page 3 ──
+function animP3() {
+  const hs = document.getElementById('handScene');
+  hs.classList.remove('show');
+  document.querySelectorAll('.cat').forEach(b => { b.classList.remove('fly'); b.style.opacity='1'; b.style.pointerEvents='auto'; });
+  void hs.offsetWidth;
+  setTimeout(() => hs.classList.add('show'), 80);
+}
+function catClick(el, category) {
+  el.classList.add('fly');
+  el.style.pointerEvents = 'none';
+  const targets = {
+    'beruhig': 'uebung_atmen.html?cat=beruhig&step=0',
+    'mich':    'uebung_tapping.html?cat=mich&step=0',
+    'raus':    'uebung_wischen.html?cat=raus&step=0',
+    'lass':    'uebung_kuchen.html?cat=lass&step=0',
+  };
+  setTimeout(() => { location.href = targets[category] || 'mastarmind.html'; }, 550);
+}
+
+window.addEventListener('load', () => {
+  if (location.hash === '#kategorien') {
+    goTo(3);
+  } else {
+    document.getElementById('page1').classList.add('active');
+    animP1();
+  }
+});
+</script>
+
+<!-- PAGE 4 -->
+<div class="page" id="page4">
+  <nav>
+    <div class="logo-wrap" onclick="goTo(1)" id="logo4"></div>
+    <div class="nav-pill">
+      <a onclick="goTo(1)">Start</a><span class="nav-sep">|</span>
+      <a onclick="goTo('exercise')">Zufällige Übungen</a><span class="nav-sep">|</span>
+      <a onclick="goTo(3)">Kategorien</a><span class="nav-sep">|</span>
+      <a onclick="goTo(4)">Was ist das?</a>
+    </div>
+  </nav>
+  <div class="p4-content">
+    <div class="p4-left">
+      <h1>Was ist Mastarmind?</h1>
+      <p>Mastarmind ist ein interaktives Tool zur Regulation deines Nervensystems – für Momente, in denen du dich gestresst, überwältigt oder einfach nicht ganz bei dir fühlst.</p>
+      <p>Alle Übungen basieren auf wissenschaftlich fundierten Methoden aus der Körperpsychologie. Sie helfen dir, dich zu erden, Stress abzubauen und wieder in Kontakt mit dir selbst zu kommen.</p>
+      <div class="tags">
+        <span class="tag" style="background:#987EFF">Grounding</span>
+        <span class="tag" style="background:#C5E073">EFT Tapping</span>
+        <span class="tag" style="background:#F0A8CC">Atemübungen</span>
+        <span class="tag" style="background:#FB6C3A;color:#FCF5EC">Somatic Movement</span>
+      </div>
+      <button class="btn-back" onclick="goTo(2)">Los geht's</button>
+    </div>
+    <div class="p4-right">
+      <div class="xcard"><div class="xi">🌿</div><div class="xt">Beruhig mich</div><div class="xd">Atemübungen & Ziehen lassen</div></div>
+      <div class="xcard"><div class="xi">✋</div><div class="xt">Mich spüren</div><div class="xd">EFT Tapping & Grounding</div></div>
+      <div class="xcard"><div class="xi">💥</div><div class="xt">Raus damit</div><div class="xd">Schwamm & Ausschütteln</div></div>
+      <div class="xcard"><div class="xi">🎨</div><div class="xt">Lass mich spielen</div><div class="xd">Kuchen & Zeichnen</div></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

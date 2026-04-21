@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – EFT Tapping</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background-color: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px;
+  z-index: 200;
+  background-color: #FCF5EC;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; width: auto; }
+.nav-pill {
+  margin-left: auto;
+  display: flex; align-items: center;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 10px 26px;
+}
+.nav-pill a {
+  font-size: 16px; color: #262626;
+  text-decoration: none; cursor: pointer;
+  white-space: nowrap; transition: opacity 0.18s;
+}
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* ── LAYOUT ── */
+.screen {
+  position: fixed; inset: 0;
+  display: flex; align-items: stretch;
+  padding-top: 88px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.screen.active { opacity: 1; pointer-events: all; }
+
+/* Left panel */
+.left {
+  flex: 0 0 520px;
+  padding: 48px 64px 48px 72px;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+}
+h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 64px; font-weight: 900;
+  line-height: 1.05; color: #262626;
+}
+.body-text {
+  font-size: 15px; line-height: 1.5;
+  color: #262626; max-width: 420px;
+  opacity: 1;
+  transition: opacity 0.4s ease, max-height 0.4s ease;
+  overflow: hidden;
+  max-height: 600px;
+}
+.body-text.hidden {
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+}
+.btn-start {
+  font-family: 'Fraunces', serif;
+  font-size: 20px; font-weight: 700;
+  background: transparent;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 14px 44px;
+  cursor: pointer; color: #262626;
+  align-self: flex-start;
+  transition: background 0.2s, color 0.2s, box-shadow 0.15s, top 0.12s;
+  position: relative; top: 0;
+}
+.btn-start:hover {
+  background: #262626; color: #FCF5EC;
+  box-shadow: inset 0 3px 8px rgba(0,0,0,0.15);
+  top: 2px;
+}
+
+/* Right panel – illustration */
+.right {
+  flex: 1;
+  position: relative;
+  display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden;
+}
+.illustration {
+  position: absolute;
+  bottom: 0;
+  height: 95%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+}
+
+/* ── TAPPING CIRCLE ── */
+@keyframes pulse {
+  0%   { transform: scale(0.85); opacity: 0.7; }
+  50%  { transform: scale(1.15); opacity: 1;   }
+  100% { transform: scale(0.85); opacity: 0.7; }
+}
+#tap-circle {
+  position: fixed;
+  width: 100px; height: 100px;
+  pointer-events: none;
+  opacity: 0;
+  margin-left: -50px;
+  margin-top: -50px;
+  transition: left 0.8s cubic-bezier(0.4,0,0.2,1),
+              top  0.8s cubic-bezier(0.4,0,0.2,1),
+              opacity 0.4s ease;
+}
+#tap-circle.visible {
+  opacity: 1;
+}
+#tap-circle.visible #kreis-img {
+  animation: pulse 0.9s ease-in-out infinite;
+}
+#kreis-img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── SKIP LINK ── */
+#skip-btn {
+  position: fixed;
+  bottom: 20px; right: 48px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 400;
+  color: #26262670;
+  background: none; border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  z-index: 300;
+  transition: color 0.2s;
+  display: none;
+}
+#skip-btn:hover { color: #262626; }
+#progress-bar {
+  position: fixed;
+  bottom: 32px; left: 72px; right: 72px;
+  height: 4px;
+  background: #26262618;
+  border-radius: 100px;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+#progress-fill {
+  height: 100%;
+  background: #262626;
+  border-radius: 100px;
+  width: 0%;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<!-- Main screen -->
+<div class="screen active" id="main-screen">
+  <div class="left">
+    <h1 id="main-headline">EFT-Tapping</h1>
+    <p class="body-text" id="body-text">EFT ist eine einfache Methode zur Stressregulation. Klopfe sanft mit zwei Fingern auf die Punkte, die der Kreis anzeigt – und folge dem Rhythmus.</p>
+    <button class="btn-start" id="main-btn" onclick="startTapping()">Start</button>
+  </div>
+  <div class="right" id="right-panel">
+      <!-- Real illustration from Figma -->
+      <img class="illustration" src="images/woman.png" alt="Illustration">
+
+      <!-- Single pulsing circle via CSS animation -->
+      <div id="tap-circle">
+        <img id="kreis-img" src="images/kreis.png" alt="">
+      </div>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<!-- Skip button -->
+<button id="skip-btn" onclick="skipExercise()">Übung überspringen</button>
+
+<script>
+const POINTS = [
+  { name: 'Top of Head',   x: 68.1, y: 30.8 },
+  { name: 'Augenbraue',    x: 65.1, y: 38.6 },
+  { name: 'Seitlich Auge', x: 60.1, y: 46.4 },
+  { name: 'Unter Auge',    x: 64.6, y: 54.5 },
+  { name: 'Unter Nase',    x: 67.8, y: 61.5 },
+  { name: 'Unter Mund',    x: 68.1, y: 73.0 },
+  { name: 'Schlüsselbein', x: 68.6, y: 89.9 },
+];
+
+const POINT_DURATION = 5000;
+
+let currentPoint = -1;
+let pointTimer   = null;
+
+function startTapping() {
+  document.getElementById('body-text').classList.add('hidden');
+  document.getElementById('skip-btn').style.display = 'block';
+  document.getElementById('progress-bar').style.opacity = '1';
+  // Show circle – CSS pulse animation kicks in automatically
+  document.getElementById('tap-circle').classList.add('visible');
+  nextPoint();
+}
+
+function nextPoint() {
+  currentPoint++;
+  if (currentPoint >= POINTS.length) { finish(); return; }
+
+  // Move circle
+  moveCircle(POINTS[currentPoint]);
+
+  // Progress bar: animate smoothly over exactly POINT_DURATION ms
+  const fill = document.getElementById('progress-fill');
+  const startPct = (currentPoint / POINTS.length) * 100;
+  const endPct   = ((currentPoint + 1) / POINTS.length) * 100;
+  fill.style.transition = 'none';
+  fill.style.width = startPct + '%';
+  void fill.offsetWidth; // force reflow
+  fill.style.transition = `width ${POINT_DURATION}ms linear`;
+  fill.style.width = endPct + '%';
+
+  // Schedule move to next point
+  pointTimer = setTimeout(nextPoint, POINT_DURATION);
+}
+
+function moveCircle(point) {
+  const circle = document.getElementById('tap-circle');
+  circle.style.left = (point.x / 100 * window.innerWidth)  + 'px';
+  circle.style.top  = (point.y / 100 * window.innerHeight) + 'px';
+}
+
+function skipExercise() { // skip to next
+  goNext(); // skip to next exercise
+}
+
+function finish() {
+  clearTimeout(pointTimer);
+  document.getElementById('tap-circle').classList.remove('visible');
+  document.getElementById('skip-btn').style.display = 'none';
+  const fill = document.getElementById('progress-fill');
+  fill.style.transition = 'width 0.3s ease';
+  fill.style.width = '100%';
+  setTimeout(() => {
+    document.getElementById('main-headline').textContent = 'Gut gemacht!';
+    const btn = document.getElementById('main-btn');
+    btn.textContent = 'Nächste Übung';
+    btn.onclick = () => goNext();
+  }, 500);
+}
+
+window.addEventListener('resize', () => {
+  if (currentPoint >= 0 && currentPoint < POINTS.length) {
+    moveCircle(POINTS[currentPoint]);
+  }
+});
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='uebung_atmen.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>

@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – Gedanken wegwischen</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background-color: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+  /* cursor: crosshair when not dragging */
+  cursor: text;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px;
+  z-index: 300;
+  background-color: #FCF5EC;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; width: auto; }
+.nav-pill {
+  margin-left: auto;
+  display: flex; align-items: center;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 10px 26px;
+}
+.nav-pill a {
+  font-size: 16px; color: #262626;
+  text-decoration: none; cursor: pointer;
+  white-space: nowrap; transition: opacity 0.18s;
+}
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* ── HEADLINE ── */
+#headline {
+  position: fixed;
+  top: 108px; left: 0; right: 0;
+  text-align: left;
+  padding: 0 72px;
+  z-index: 200;
+  pointer-events: none;
+}
+#headline h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 56px; font-weight: 900;
+  line-height: 1.05; color: #262626;
+  transition: opacity 0.5s ease;
+}
+
+/* ── CANVAS (click area) ── */
+#thought-canvas {
+  position: fixed;
+  top: 88px; left: 0; right: 0; bottom: 0;
+  z-index: 100;
+}
+
+/* ── THOUGHT PILLS ── */
+.thought {
+  position: absolute;
+  font-family: 'Fraunces', serif;
+  font-size: 28px; font-weight: 700;
+  color: #262626;
+  background: transparent;
+  border: none;
+  outline: none;
+  cursor: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0;
+  line-height: 1.2;
+  transition: opacity 0.6s ease, filter 0.6s ease, transform 0.6s ease;
+  pointer-events: all;
+  user-select: none;
+  caret-color: #262626;
+}
+/* Hide placeholder completely */
+.thought::placeholder { color: transparent; }
+/* Remove textarea default styling */
+.thought { -webkit-appearance: none; appearance: none; }
+.thought.wiping {
+  opacity: 0.4;
+  filter: blur(3px);
+  transform: scale(0.95);
+}
+.thought.wiped {
+  opacity: 0;
+  filter: blur(8px);
+  transform: scale(0.9);
+  pointer-events: none;
+}
+/* Only bottom border when actively typing */
+.thought.active-input {
+  border-bottom: 2px solid #26262650;
+}
+
+/* ── SPONGE ── */
+#sponge-wrap {
+  position: fixed;
+  bottom: 60px; right: 60px;
+  z-index: 400;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: transform 0.15s ease;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.12));
+}
+#sponge-wrap:active { cursor: grabbing; transform: scale(1.08); }
+#sponge-wrap img {
+  width: 90px; height: auto;
+  display: block;
+  pointer-events: none;
+}
+/* Wipe trail effect */
+#wipe-trail {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 350;
+}
+
+/* ── BOTTOM CONTROLS ── */
+#bottom-controls {
+  position: fixed;
+  bottom: 28px; left: 0; right: 0;
+  display: flex; justify-content: center;
+  align-items: center; gap: 32px;
+  z-index: 400;
+}
+#fertig-btn {
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 700;
+  background: transparent;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 12px 36px;
+  cursor: pointer; color: #262626;
+  transition: background 0.2s, color 0.2s;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s, background 0.2s, color 0.2s;
+}
+#fertig-btn.visible { opacity: 1; pointer-events: all; }
+#fertig-btn:hover { background: #262626; color: #FCF5EC; }
+
+#skip-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px; font-weight: 400;
+  color: #26262660; background: none;
+  border: none; cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+  position: fixed; bottom: 20px; right: 48px;
+  z-index: 400;
+}
+#skip-btn:hover { color: #262626; }
+
+/* ── HINT TEXT ── */
+#hint {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px; color: #26262640;
+  pointer-events: none; z-index: 90;
+  text-align: center; line-height: 1.6;
+  transition: opacity 0.5s;
+}
+#hint.hidden { opacity: 0; }
+
+/* ── NEXT EXERCISE BTN ── */
+#next-btn {
+  position: fixed;
+  bottom: 28px; left: 50%; transform: translateX(-50%);
+  font-family: 'Fraunces', serif;
+  font-size: 18px; font-weight: 700;
+  background: transparent;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 12px 36px;
+  cursor: pointer; color: #262626;
+  z-index: 400;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.5s, background 0.2s, color 0.2s;
+}
+#next-btn.visible { opacity: 1; pointer-events: all; }
+#next-btn:hover { background: #262626; color: #FCF5EC; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<div id="headline">
+  <h1 id="headline-text">Wisch deine negativen Gedanken weg!</h1>
+</div>
+
+<!-- Click anywhere to write -->
+<div id="thought-canvas"></div>
+
+<!-- Hint -->
+<div id="hint">Klick irgendwo und schreib einen Gedanken.<br>Wisch ihn dann mit dem Schwamm weg.</div>
+
+<!-- Sponge -->
+<div id="sponge-wrap">
+  <img src="images/schwamm.png" alt="Schwamm">
+</div>
+
+<!-- Controls -->
+<div id="bottom-controls">
+  <button id="fertig-btn" onclick="finishExercise()">Fertig</button>
+</div>
+<button id="skip-btn" onclick="goNext()">Übung überspringen</button>
+<button id="next-btn" onclick="goNext()">Nächste Übung</button>
+
+<script>
+const canvas     = document.getElementById('thought-canvas');
+const hint       = document.getElementById('hint');
+const fertigBtn  = document.getElementById('fertig-btn');
+const spongeWrap = document.getElementById('sponge-wrap');
+
+let thoughts    = []; // { el, wiped, wipeCount }
+let activeInput = null;
+let isDragging  = false;
+
+const WIPES_NEEDED = 4; // how many passes before text disappears
+
+// ── CLICK TO CREATE THOUGHT ──
+canvas.addEventListener('click', e => {
+  if (e.target !== canvas) return;
+  if (isDragging) return;
+  createThought(e.clientX, e.clientY);
+});
+
+function createThought(x, y) {
+  if (activeInput) commitInput(activeInput);
+
+  // Use textarea for multiline support
+  const el = document.createElement('textarea');
+  el.className = 'thought active-input';
+  el.rows = 1;
+  el.style.left     = (x - 20) + 'px';
+  el.style.top      = (y - 20) + 'px';
+  el.style.fontSize = (28 + Math.random() * 10) + 'px';
+  el.style.resize   = 'none';
+  el.style.overflow = 'hidden';
+  el.style.background = 'transparent';
+  el.style.border   = 'none';
+  el.style.outline  = 'none';
+  el.style.width    = '300px';
+
+  canvas.appendChild(el);
+  el.focus();
+
+  activeInput = el;
+  const obj = { el, wiped: false, wipeCount: 0, wiping: false };
+  thoughts.push(obj);
+
+  hint.classList.add('hidden');
+
+  // Shift+Enter = newline, Enter alone = commit
+  el.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter' && !ev.shiftKey) {
+      ev.preventDefault();
+      commitInput(el);
+    }
+    // Auto-grow
+    setTimeout(() => {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }, 0);
+  });
+  el.addEventListener('blur', () => setTimeout(() => commitInput(el), 100));
+
+  fertigBtn.classList.add('visible');
+}
+
+function commitInput(el) {
+  if (!el) return;
+  if (el === activeInput) activeInput = null;
+  el.classList.remove('active-input');
+  el.readOnly = true;
+  el.style.cursor = 'default';
+
+  if (!el.value.trim()) {
+    el.remove();
+    thoughts = thoughts.filter(t => t.el !== el);
+    if (thoughts.length === 0) fertigBtn.classList.remove('visible');
+  }
+}
+
+// ── SPONGE DRAG ──
+let dragOffsetX = 0, dragOffsetY = 0;
+let lastSpongeX = 0, lastSpongeY = 0;
+
+spongeWrap.addEventListener('mousedown', startDrag);
+spongeWrap.addEventListener('touchstart', startDragTouch, { passive: false });
+
+function startDrag(e) {
+  e.preventDefault();
+  isDragging = true;
+  const rect = spongeWrap.getBoundingClientRect();
+  dragOffsetX = e.clientX - rect.left;
+  dragOffsetY = e.clientY - rect.top;
+  spongeWrap.style.transition = 'none';
+  document.addEventListener('mousemove', onDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+function startDragTouch(e) {
+  e.preventDefault();
+  isDragging = true;
+  const touch = e.touches[0];
+  const rect = spongeWrap.getBoundingClientRect();
+  dragOffsetX = touch.clientX - rect.left;
+  dragOffsetY = touch.clientY - rect.top;
+  spongeWrap.style.transition = 'none';
+  document.addEventListener('touchmove', onDragTouch, { passive: false });
+  document.addEventListener('touchend', endDragTouch);
+}
+function onDrag(e)      { moveSponge(e.clientX, e.clientY); }
+function onDragTouch(e) { e.preventDefault(); moveSponge(e.touches[0].clientX, e.touches[0].clientY); }
+
+function moveSponge(cx, cy) {
+  const nx = cx - dragOffsetX;
+  const ny = cy - dragOffsetY;
+
+  // Detect direction change (hin und her) by tracking horizontal reversal
+  const dx = nx - lastSpongeX;
+  lastSpongeX = nx; lastSpongeY = ny;
+
+  spongeWrap.style.right  = 'auto';
+  spongeWrap.style.bottom = 'auto';
+  spongeWrap.style.left   = nx + 'px';
+  spongeWrap.style.top    = ny + 'px';
+
+  checkWipe(cx, cy, dx);
+}
+function endDrag()      { isDragging = false; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', endDrag); spongeWrap.style.transition = 'transform 0.15s ease'; checkAllWiped(); }
+function endDragTouch() { isDragging = false; document.removeEventListener('touchmove', onDragTouch); document.removeEventListener('touchend', endDragTouch); checkAllWiped(); }
+
+// ── WIPE CHECK ──
+let lastWipeDir = 0; // track direction changes
+let dirChangeCooldown = false;
+
+function checkWipe(cx, cy, dx) {
+  const spongeSize = 90;
+  const sLeft   = cx - dragOffsetX;
+  const sTop    = cy - dragOffsetY;
+  const sRight  = sLeft + spongeSize;
+  const sBottom = sTop  + spongeSize;
+
+  thoughts.forEach(t => {
+    if (t.wiped || t.wiping) return;
+    const rect = t.el.getBoundingClientRect();
+    const overlap = !(rect.right < sLeft || rect.left > sRight ||
+                      rect.bottom < sTop || rect.top > sBottom);
+
+    if (!overlap || !t.el.value.trim()) return;
+
+    // Only count a wipe when direction changes (hin→her or her→hin)
+    const dir = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+    if (dir !== 0 && dir !== lastWipeDir && !dirChangeCooldown) {
+      t.wipeCount++;
+      lastWipeDir = dir;
+      dirChangeCooldown = true;
+      setTimeout(() => { dirChangeCooldown = false; }, 120);
+
+      // Visual feedback: fade opacity gradually
+      const progress = t.wipeCount / WIPES_NEEDED;
+      t.el.style.opacity = String(1 - progress * 0.5);
+      t.el.style.filter  = `blur(${progress * 2}px)`;
+
+      // Spawn foam at sponge position
+      spawnFoam(cx, cy);
+
+      if (t.wipeCount >= WIPES_NEEDED) {
+        t.wiping = true;
+        t.el.classList.add('wiping');
+        setTimeout(() => {
+          t.el.classList.add('wiped');
+          setTimeout(() => { t.el.remove(); t.wiped = true; checkAllWiped(); }, 600);
+        }, 200);
+      }
+    }
+  });
+}
+
+// ── FOAM PARTICLES ──
+function spawnFoam(cx, cy) {
+  for (let i = 0; i < 5; i++) {
+    const foam = document.createElement('div');
+    foam.style.cssText = `
+      position:fixed;
+      width:${6 + Math.random()*8}px;
+      height:${6 + Math.random()*8}px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.85);
+      left:${cx + (Math.random()-0.5)*40}px;
+      top:${cy + (Math.random()-0.5)*40}px;
+      pointer-events:none;
+      z-index:500;
+      transition:all 0.5s ease;
+      opacity:0.9;
+    `;
+    document.body.appendChild(foam);
+    requestAnimationFrame(() => {
+      foam.style.transform = `translate(${(Math.random()-0.5)*30}px, ${-20-Math.random()*20}px) scale(0.2)`;
+      foam.style.opacity = '0';
+    });
+    setTimeout(() => foam.remove(), 520);
+  }
+}
+
+function checkAllWiped() { /* No auto-finish – user clicks Fertig */ }
+
+// ── FINISH ──
+function finishExercise() {
+  document.getElementById('headline-text').textContent = 'Gut gemacht!';
+  fertigBtn.classList.remove('visible');
+  document.getElementById('next-btn').classList.add('visible');
+  document.getElementById('skip-btn').style.display = 'none';
+  hint.classList.add('hidden');
+  thoughts.forEach(t => {
+    if (!t.wiped) { t.el.classList.add('wiped'); setTimeout(() => t.el.remove(), 600); }
+  });
+}
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='uebung_grounding.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>

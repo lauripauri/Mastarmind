@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – Grounding</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background-color: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px;
+  z-index: 200;
+  background-color: #FCF5EC;
+  pointer-events: all;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; width: auto; }
+.nav-pill {
+  margin-left: auto;
+  display: flex; align-items: center;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 10px 26px;
+}
+.nav-pill a {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 400;
+  color: #262626; text-decoration: none;
+  cursor: pointer; white-space: nowrap;
+  transition: opacity 0.18s;
+}
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* ── BUBBLE CANVAS ── */
+#canvas {
+  position: fixed;
+  top: 88px; left: 0; right: 0;
+  bottom: 108px; /* stops exactly at input field top */
+  overflow: hidden; /* hard clip – bubbles never cross into input area */
+  pointer-events: none;
+}
+
+/* ── HEADLINE ── */
+#headline {
+  position: fixed;
+  top: 108px; left: 0; right: 0;
+  text-align: left;
+  padding: 0 72px;
+  z-index: 100;
+  pointer-events: none;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+#headline-text {
+  font-family: 'Fraunces', serif;
+  font-size: 52px; font-weight: 900;
+  line-height: 1.05;
+  color: #262626;
+}
+#category-pill {
+  font-family: 'Fraunces', serif;
+  font-size: 52px; font-weight: 900;
+  padding: 6px 28px;
+  border-radius: 100px;
+  transition: background-color 0.4s ease, color 0.4s ease, transform 0.3s ease;
+  display: inline-block;
+}
+#category-pill.pop {
+  animation: pillPop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes pillPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ── INPUT AREA ── */
+#input-area {
+  position: fixed;
+  bottom: 32px; left: 0; right: 0;
+  display: flex; justify-content: center;
+  z-index: 200;
+}
+#word-input {
+  font-family: 'Fraunces', serif;
+  font-size: 20px; font-weight: 700;
+  color: #262626;
+  background: transparent;
+  border: 1.5px solid #262626;
+  border-radius: 100px;
+  padding: 14px 36px;
+  width: 380px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#word-input::placeholder {
+  color: #26262655;
+  font-weight: 400;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+}
+#word-input:focus {
+  border-color: #262626;
+  box-shadow: 0 0 0 3px rgba(38,38,38,0.08);
+}
+
+/* ── DONE STATE ── */
+#done-overlay {
+  position: fixed;
+  top: 108px; left: 72px; right: 72px;
+  z-index: 150;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+#done-overlay.show { opacity: 1; pointer-events: all; }
+#done-title {
+  font-family: 'Fraunces', serif;
+  font-size: 64px; font-weight: 900;
+  color: #262626;
+  background-color: #FCF5EC;
+  padding: 4px 0;
+  line-height: 1.05;
+}
+#done-btn {
+  display: none; /* hidden – we reuse the input-area button instead */
+}
+
+/* ── FLOATING BUBBLE ── */
+.bubble {
+  position: absolute;
+  border-radius: 100px;
+  font-family: 'Fraunces', serif;
+  font-weight: 700;
+  padding: 14px 28px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  will-change: transform, left, top;
+}
+.bubble.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* progress dots */
+#progress {
+  position: fixed;
+  bottom: 90px; left: 0; right: 0;
+  display: flex; justify-content: center;
+  gap: 8px; z-index: 200;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #26262630;
+  transition: background 0.3s, transform 0.3s;
+}
+.dot.filled { transform: scale(1.2); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<!-- Floating bubble canvas -->
+<div id="canvas"></div>
+
+<!-- Headline -->
+<div id="headline">
+  <span id="headline-text">Nenne mir 3 Dinge, die du</span>
+  <span id="category-pill">siehst!</span>
+</div>
+
+<!-- Progress dots -->
+<div id="progress">
+  <div class="dot" id="dot0"></div>
+  <div class="dot" id="dot1"></div>
+  <div class="dot" id="dot2"></div>
+</div>
+
+<!-- Input -->
+<div id="input-area">
+  <input id="word-input" type="text" placeholder="*Type here & press enter*" autocomplete="off">
+</div>
+
+<!-- Skip button -->
+<button id="skip-btn" style="
+  position:fixed; bottom:20px; right:48px;
+  font-family:'DM Sans',sans-serif; font-size:13px; font-weight:400;
+  color:#26262670; background:none; border:none; cursor:pointer;
+  text-decoration:underline; z-index:300; transition:color 0.2s;
+" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262670'"
+   onclick="goNext()">Übung überspringen</button>
+<div id="done-overlay">
+  <div id="done-title">Gut gemacht!</div>
+  <button id="done-btn"></button>
+</div>
+
+<script>
+// ── CATEGORIES ──
+const CATEGORIES = [
+  { word: 'siehst!',    color: '#F0A8CC', textColor: '#262626' },
+  { word: 'fühlst!',   color: '#C5B5FF', textColor: '#262626' },
+  { word: 'hörst!',    color: '#C8DC7A', textColor: '#262626' },
+  { word: 'riechst!',  color: '#FB6C3A', textColor: '#262626' },
+  { word: 'schmeckst!',color: '#262626', textColor: '#FCF5EC' },
+];
+
+const WORDS_PER_CAT = 3;
+
+// Bubble font sizes based on word length
+function fontSize(word) {
+  if (word.length <= 4)  return 44;
+  if (word.length <= 7)  return 38;
+  if (word.length <= 10) return 32;
+  return 26;
+}
+
+// ── STATE ──
+let catIndex  = 0;
+let wordCount = 0;
+let bubbles   = []; // { el, x, y, vx, vy, w, h }
+let animFrame = null;
+
+// ── SAFE ZONES (px) ──
+function safeTop()    { return 0; } // canvas is already clipped at top
+function safeBottom() {
+  const canvas = document.getElementById('canvas');
+  return canvas.offsetHeight;
+}
+
+// ── INIT ──
+function init() {
+  updateCategoryUI(false);
+  updateDots();
+  document.getElementById('word-input').focus();
+  startAnimation();
+}
+
+function updateCategoryUI(animate) {
+  const cat = CATEGORIES[catIndex];
+  const pill = document.getElementById('category-pill');
+  pill.textContent = cat.word;
+  pill.style.backgroundColor = cat.color;
+  pill.style.color = cat.textColor;
+  if (animate) {
+    pill.classList.remove('pop');
+    void pill.offsetWidth;
+    pill.classList.add('pop');
+  }
+  updateDots();
+}
+
+function updateDots() {
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('dot' + i);
+    const cat = CATEGORIES[catIndex];
+    dot.style.background = i < wordCount
+      ? cat.color
+      : '#26262628';
+    dot.classList.toggle('filled', i < wordCount);
+  }
+}
+
+// ── INPUT ──
+document.getElementById('word-input').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const val = e.target.value.trim();
+  if (!val) return;
+  e.target.value = '';
+
+  spawnBubble(val);
+  wordCount++;
+  updateDots();
+
+  if (wordCount >= WORDS_PER_CAT) {
+    catIndex++;
+    wordCount = 0;
+    if (catIndex >= CATEGORIES.length) {
+      finishExercise();
+    } else {
+      setTimeout(() => updateCategoryUI(true), 200);
+    }
+  }
+});
+
+// ── SPAWN BUBBLE ──
+function spawnBubble(word) {
+  const cat = CATEGORIES[catIndex];
+  const el  = document.createElement('div');
+  el.className = 'bubble';
+  el.textContent = word;
+  el.style.backgroundColor = cat.color;
+  el.style.color = cat.textColor;
+  el.style.fontSize = fontSize(word) + 'px';
+  document.getElementById('canvas').appendChild(el);
+
+  // Measure after inserting
+  const W = el.offsetWidth  || estimateWidth(word, fontSize(word));
+  const H = el.offsetHeight || 56;
+
+  const canvas    = document.getElementById('canvas');
+  const canvasW   = canvas.offsetWidth;
+  const canvasH   = canvas.offsetHeight;
+
+  let x = Math.random() * Math.max(0, canvasW - W);
+  let y = Math.random() * Math.max(0, canvasH - H);
+
+  // Gentle random velocity
+  const angle = Math.random() * Math.PI * 2;
+  const speed = 0.3 + Math.random() * 0.25;
+  const vx = Math.cos(angle) * speed;
+  const vy = Math.sin(angle) * speed;
+
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+
+  // Animate in
+  requestAnimationFrame(() => el.classList.add('visible'));
+
+  bubbles.push({ el, x, y, vx, vy, w: W, h: H });
+}
+
+function estimateWidth(word, fs) {
+  return word.length * fs * 0.6 + 56;
+}
+
+// ── PHYSICS LOOP ──
+function startAnimation() {
+  function loop() {
+    const canvas = document.getElementById('canvas');
+    const W  = canvas.offsetWidth;
+    const tY = safeTop();
+    const bY = safeBottom();
+
+    for (let i = 0; i < bubbles.length; i++) {
+      const b = bubbles[i];
+
+      b.x += b.vx;
+      b.y += b.vy;
+
+      // Wall bounces
+      if (b.x < 0)        { b.x = 0;        b.vx =  Math.abs(b.vx); }
+      if (b.x + b.w > W)  { b.x = W - b.w;  b.vx = -Math.abs(b.vx); }
+      if (b.y < tY)       { b.y = tY;        b.vy =  Math.abs(b.vy); }
+      if (b.y + b.h > bY) { b.y = bY - b.h; b.vy = -Math.abs(b.vy); }
+
+      // Bubble–bubble soft repulsion
+      for (let j = i + 1; j < bubbles.length; j++) {
+        const o = bubbles[j];
+        const cx1 = b.x + b.w / 2, cy1 = b.y + b.h / 2;
+        const cx2 = o.x + o.w / 2, cy2 = o.y + o.h / 2;
+        const dx = cx1 - cx2, dy = cy1 - cy2;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minD = (b.w + o.w) / 2 + 8;
+
+        if (dist < minD && dist > 0) {
+          const nx = dx / dist, ny = dy / dist;
+          const overlap = (minD - dist) / 2;
+          b.x += nx * overlap; b.y += ny * overlap;
+          o.x -= nx * overlap; o.y -= ny * overlap;
+
+          const rv = (b.vx - o.vx) * nx + (b.vy - o.vy) * ny;
+          if (rv < 0) {
+            const restitution = 0.6;
+            b.vx -= (1 + restitution) * rv * nx / 2;
+            b.vy -= (1 + restitution) * rv * ny / 2;
+            o.vx += (1 + restitution) * rv * nx / 2;
+            o.vy += (1 + restitution) * rv * ny / 2;
+          }
+        }
+      }
+
+      // Apply gentle speed cap
+      const speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+      if (speed > 0.8) { b.vx *= 0.8 / speed; b.vy *= 0.8 / speed; }
+      if (speed < 0.15 && bubbles.length < 5) { b.vx *= 1.05; b.vy *= 1.05; }
+
+      b.el.style.left = b.x + 'px';
+      b.el.style.top  = b.y + 'px';
+    }
+
+    animFrame = requestAnimationFrame(loop);
+  }
+  animFrame = requestAnimationFrame(loop);
+}
+
+// ── FINISH ──
+function finishExercise() {
+  // Hide input field, replace with "Nächste Übung" button
+  const inputArea = document.getElementById('input-area');
+  inputArea.innerHTML = `
+    <button onclick="goNext()" style="
+      font-family:'Fraunces',serif; font-size:20px; font-weight:700;
+      background:transparent; border:1.5px solid #262626;
+      border-radius:100px; padding:14px 44px;
+      cursor:pointer; color:#262626;
+      transition:background 0.2s, color 0.2s;
+    " onmouseover="this.style.background='#262626';this.style.color='#FCF5EC'"
+       onmouseout="this.style.background='transparent';this.style.color='#262626'">
+      Nächste Übung
+    </button>`;
+
+  document.getElementById('headline').style.opacity = '0';
+  document.getElementById('progress').style.opacity = '0';
+
+  // Show "Gut gemacht!" at headline position
+  setTimeout(() => {
+    document.getElementById('done-overlay').classList.add('show');
+  }, 400);
+}
+
+// ── START ──
+window.addEventListener('load', init);
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='mastarmind.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>

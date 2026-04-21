@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastarmind – Mal drauf los!</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #FCF5EC;
+  font-family: 'DM Sans', sans-serif;
+  color: #262626;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  display: flex; align-items: center;
+  padding: 24px 48px; z-index: 300;
+  pointer-events: all;
+}
+.logo-wrap { cursor: pointer; }
+.logo-wrap img { height: 40px; }
+.nav-pill {
+  margin-left: auto; display: flex; align-items: center;
+  border: 1.5px solid #262626; border-radius: 100px; padding: 10px 26px;
+  background: #FCF5EC;
+}
+.nav-pill a { font-size: 16px; color: #262626; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.nav-pill a:hover { opacity: 0.4; }
+.nav-sep { margin: 0 14px; opacity: 0.3; font-size: 13px; }
+
+/* HEADLINE */
+#headline {
+  position: fixed;
+  top: 108px; left: 72px;
+  font-family: 'Fraunces', serif;
+  font-size: 64px; font-weight: 900;
+  line-height: 1.0; color: #262626;
+  z-index: 300;
+  pointer-events: none;
+}
+
+/* CANVAS – full screen, behind UI */
+#draw-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* PALETTE – bottom left */
+#palette {
+  position: fixed;
+  bottom: 28px; left: 64px;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: all;
+}
+
+/* Patches row */
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Patch buttons */
+.patch-btn {
+  width: 52px; height: 52px;
+  border-radius: 10px;
+  border: 1.5px solid #26262628;
+  overflow: hidden;
+  cursor: pointer;
+  background: #FCF5EC;
+  transition: transform 0.12s, border-color 0.12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.patch-btn img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; padding: 6px; }
+.patch-btn:hover { transform: scale(1.08); border-color: #262626; }
+.patch-btn.active { border: 2px solid #262626; box-shadow: 0 0 0 3px rgba(38,38,38,0.12); }
+
+/* Size dots */
+.size-btn {
+  border-radius: 50%;
+  background: #262626;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  transition: transform 0.12s;
+}
+.size-btn:hover { transform: scale(1.15); }
+.size-btn.active { border: 2px solid #262626; box-shadow: 0 0 0 3px rgba(38,38,38,0.18); }
+
+/* Color swatches */
+.color-btn {
+  width: 44px; height: 44px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform 0.12s;
+  flex-shrink: 0;
+}
+.color-btn:hover { transform: scale(1.1); }
+.color-btn.active { border: 2px solid #262626; box-shadow: 0 0 0 3px rgba(38,38,38,0.15); }
+/* White swatch needs a border to be visible */
+.color-btn.white { border: 1.5px solid #26262630; }
+.color-btn.white.active { border: 2px solid #262626; }
+
+/* Fertig + Undo */
+#bottom-right {
+  position: fixed;
+  bottom: 28px; right: 48px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+  z-index: 300;
+}
+#fertig-btn {
+  position: fixed;
+  top: 196px; left: 72px;
+  font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700;
+  background: transparent; border: 1.5px solid #262626; border-radius: 100px;
+  padding: 12px 40px; cursor: pointer; color: #262626;
+  z-index: 300;
+  transition: background 0.2s, color 0.2s;
+}
+#fertig-btn:hover { background: #262626; color: #FCF5EC; }
+#undo-btn {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; color: #26262660;
+  background: none; border: none; cursor: pointer; text-decoration: underline;
+}
+#undo-btn:hover { color: #262626; }
+#skip-btn {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; color: #26262650;
+  background: none; border: none; cursor: pointer; text-decoration: underline;
+}
+#skip-btn:hover { color: #262626; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-wrap" onclick="location.href='mastarmind.html'">
+    <img src="images/logo.png" alt="Mastarmind">
+  </div>
+  <div class="nav-pill">
+    <a onclick="location.href='mastarmind.html'">Start</a><span class="nav-sep">|</span>
+    <a href='uebung_grounding.html?cat=random&step=0'>Zufällige Übungen</a><span class="nav-sep">|</span>
+    <a href='mastarmind.html#kategorien'>Kategorien</a><span class="nav-sep">|</span>
+    <a href="#">Was ist das?</a>
+  </div>
+</nav>
+
+<div id="headline">Mal drauf los!</div>
+<button id="fertig-btn" onclick="goNext()">Fertig</button>
+
+<!-- Full-screen drawing canvas -->
+<canvas id="draw-canvas"></canvas>
+
+<!-- Palette bottom left -->
+<div id="palette">
+  <!-- Row 1: Patches -->
+  <div class="palette-row">
+    <div class="patch-btn" onclick="pickPatch(this,'images/Patchmalen1.png')"><img src="images/Patchmalen1.png"></div>
+    <div class="patch-btn" onclick="pickPatch(this,'images/Patchmalen2.png')"><img src="images/Patchmalen2.png"></div>
+    <div class="patch-btn" onclick="pickPatch(this,'images/Patchmalen3.png')"><img src="images/Patchmalen3.png"></div>
+  </div>
+
+  <!-- Row 2: Pen sizes -->
+  <div class="palette-row" id="sizes">
+    <div class="size-btn active" data-size="28" style="width:28px;height:28px;" onclick="pickSize(this,28)"></div>
+    <div class="size-btn" data-size="18" style="width:18px;height:18px;" onclick="pickSize(this,18)"></div>
+    <div class="size-btn" data-size="10" style="width:10px;height:10px;" onclick="pickSize(this,10)"></div>
+    <div class="size-btn" data-size="4"  style="width:4px;height:4px;"   onclick="pickSize(this,4)"></div>
+  </div>
+
+  <!-- Row 3: Colors -->
+  <div class="palette-row">
+    <div class="color-btn active" style="background:#F0A8CC" onclick="pickColor(this,'#F0A8CC')"></div>
+    <div class="color-btn" style="background:#FB6C3A" onclick="pickColor(this,'#FB6C3A')"></div>
+    <div class="color-btn" style="background:#C5B5FF" onclick="pickColor(this,'#C5B5FF')"></div>
+    <div class="color-btn" style="background:#262626" onclick="pickColor(this,'#262626')"></div>
+    <div class="color-btn white" style="background:#FFFFFF" onclick="pickColor(this,'#FFFFFF')"></div>
+    <div class="color-btn" style="background:#A2BF47" onclick="pickColor(this,'#A2BF47')"></div>
+  </div>
+</div>
+
+<!-- Bottom right: Fertig + Undo + Skip -->
+<div id="bottom-right">
+  <button id="undo-btn" onclick="undoStroke()">↩ Rückgängig</button>
+  <button id="skip-btn" onclick="goNext()">Übung überspringen</button>
+</div>
+
+<!-- Patch layer (sits above canvas) -->
+<div id="patch-layer" style="position:fixed;inset:0;pointer-events:none;z-index:2;"></div>
+
+<script>
+// ── CANVAS SETUP ──
+const canvas = document.getElementById('draw-canvas');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  // Save current drawing
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  tmp.getContext('2d').drawImage(canvas, 0, 0);
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ctx.drawImage(tmp, 0, 0);
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// ── STATE ──
+let drawing   = false;
+let curColor  = '#F0A8CC';
+let curSize   = 28;
+let patchMode = null; // img src if patch selected
+let strokes   = []; // array of ImageData for undo
+let lastX = 0, lastY = 0;
+
+// ── TOOL PICKS ──
+function pickColor(el, color) {
+  document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  curColor  = color;
+  patchMode = null;
+  document.querySelectorAll('.patch-btn').forEach(b => b.classList.remove('active'));
+}
+function pickSize(el, size) {
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  curSize   = size;
+  patchMode = null;
+  document.querySelectorAll('.patch-btn').forEach(b => b.classList.remove('active'));
+}
+function pickPatch(el, src) {
+  document.querySelectorAll('.patch-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  patchMode = src;
+}
+
+// ── DRAWING ──
+canvas.addEventListener('mousedown', e => {
+  if (patchMode) { placePatch(e.clientX, e.clientY); return; }
+  drawing = true;
+  saveSnapshot();
+  [lastX, lastY] = [e.clientX, e.clientY];
+  // Draw a dot on click
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, curSize / 2, 0, Math.PI * 2);
+  ctx.fillStyle = curColor;
+  ctx.fill();
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!drawing) return;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(e.clientX, e.clientY);
+  ctx.strokeStyle = curColor;
+  ctx.lineWidth   = curSize;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+  [lastX, lastY] = [e.clientX, e.clientY];
+});
+
+canvas.addEventListener('mouseup',    () => { drawing = false; });
+canvas.addEventListener('mouseleave', () => { drawing = false; });
+
+// Touch support
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  if (patchMode) { placePatch(t.clientX, t.clientY); return; }
+  drawing = true;
+  saveSnapshot();
+  [lastX, lastY] = [t.clientX, t.clientY];
+}, { passive: false });
+
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!drawing) return;
+  const t = e.touches[0];
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(t.clientX, t.clientY);
+  ctx.strokeStyle = curColor;
+  ctx.lineWidth   = curSize;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  ctx.stroke();
+  [lastX, lastY] = [t.clientX, t.clientY];
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => { drawing = false; });
+
+// ── PATCHES ──
+const patchLayer = document.getElementById('patch-layer');
+let patches = [];
+
+function placePatch(x, y) {
+  saveSnapshot();
+  const el  = document.createElement('img');
+  el.src    = patchMode;
+  el.style.cssText = `
+    position:absolute;
+    width:80px; height:auto;
+    left:${x}px; top:${y}px;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+  `;
+  patchLayer.appendChild(el);
+  patches.push(el);
+}
+
+// ── UNDO ──
+// We snapshot before each stroke start + each patch
+function saveSnapshot() {
+  strokes.push({
+    canvas: ctx.getImageData(0, 0, canvas.width, canvas.height),
+    patchCount: patches.length
+  });
+  if (strokes.length > 40) strokes.shift();
+}
+
+function undoStroke() {
+  if (!strokes.length) return;
+  const snap = strokes.pop();
+  ctx.putImageData(snap.canvas, 0, 0);
+  // Remove any patches added after this snapshot
+  while (patches.length > snap.patchCount) {
+    patches.pop().remove();
+  }
+}
+
+// ── Navigation ──
+const _params = new URLSearchParams(location.search);
+const _cat  = _params.get('cat')  || 'random';
+const _step = parseInt(_params.get('step') || '0');
+const _flows = {
+  beruhig: ['uebung_atmen.html','uebung_ziehenlassen.html'],
+  mich:    ['uebung_tapping.html','uebung_grounding.html'],
+  raus:    ['uebung_wischen.html','uebung_schuetteln.html'],
+  lass:    ['uebung_kuchen.html','uebung_malen.html'],
+  random:  ['uebung_grounding.html','uebung_wischen.html','uebung_atmen.html',
+             'uebung_tapping.html','uebung_kuchen.html','uebung_schuetteln.html',
+             'uebung_malen.html','uebung_ziehenlassen.html'],
+};
+function goNext() {
+  const flow = _flows[_cat] || _flows['random'];
+  const next = _step + 1;
+  if (next >= flow.length) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[next] + '?cat=' + _cat + '&step=' + next; }
+}
+function goPrev() {
+  const flow = _flows[_cat] || _flows['random'];
+  const prev = _step - 1;
+  if (prev < 0) { location.href = _cat === 'random' ? 'mastarmind.html' : 'mastarmind.html#kategorien'; }
+  else { location.href = flow[prev] + '?cat=' + _cat + '&step=' + prev; }
+}
+</script>
+<button onclick="location.href='uebung_schuetteln.html'" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+<button onclick="goPrev()" style="position:fixed;bottom:20px;left:48px;font-family:'DM Sans',sans-serif;font-size:13px;color:#26262660;background:none;border:none;cursor:pointer;text-decoration:underline;z-index:300;" onmouseover="this.style.color='#262626'" onmouseout="this.style.color='#26262660'">← Vorherige Übung</button>
+</body>
+</html>
